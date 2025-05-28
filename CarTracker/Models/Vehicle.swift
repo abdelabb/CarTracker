@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 class Vehicle: ObservableObject, Identifiable, Codable {
     var id: UUID
@@ -6,9 +7,8 @@ class Vehicle: ObservableObject, Identifiable, Codable {
     var brand: String
     var registration: String
 
-    // Ne pas mettre @Published ici (inutile pour UserDefaults)
-    var entries: [Entry]
-    var maintenanceRecords: [MaintenanceEntry]
+    @Published var entries: [Entry]
+    @Published var maintenanceRecords: [MaintenanceEntry]
 
     enum CodingKeys: CodingKey {
         case id, name, brand, registration, entries, maintenanceRecords
@@ -23,7 +23,7 @@ class Vehicle: ObservableObject, Identifiable, Codable {
         self.maintenanceRecords = maintenanceRecords
     }
 
-    // Encodage
+    // Encoder manuellement les propriétés publiées
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -34,7 +34,7 @@ class Vehicle: ObservableObject, Identifiable, Codable {
         try container.encode(maintenanceRecords, forKey: .maintenanceRecords)
     }
 
-    // Décodage
+    // Decoder manuellement les propriétés publiées
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -44,16 +44,4 @@ class Vehicle: ObservableObject, Identifiable, Codable {
         entries = try container.decode([Entry].self, forKey: .entries)
         maintenanceRecords = try container.decode([MaintenanceEntry].self, forKey: .maintenanceRecords)
     }
-
-    // Exemple statique pour test
-    static let example = Vehicle(
-        name: "Peugeot 208",
-        brand: "Peugeot",
-        registration: "AB-123-CD",
-        maintenanceRecords: [
-            MaintenanceEntry(type: "Vidange", date: Date(), mileage: 120000, cost: 89.99, notes: "Changement d’huile"),
-            MaintenanceEntry(type: "Freins", date: Date(), mileage: 118500, cost: 120.00, notes: "Plaquettes avant changées"),
-            MaintenanceEntry(type: "Contrôle technique", date: Date(), mileage: 122000, cost: 65.00, notes: "OK, validé 2 ans")
-        ]
-    )
 }

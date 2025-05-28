@@ -8,9 +8,9 @@ struct VehicleListView: View {
     var body: some View {
         NavigationView {
             List {
-                ForEach(Array(viewModel.vehicles.enumerated()), id: \.element.id) { index, vehicle in
+                ForEach(Array(viewModel.vehicles.enumerated()), id: \.1.id) { index, vehicle in
                     NavigationLink(
-                        destination: VehicleDetailView(vehicle: $viewModel.vehicles[index], viewModel: viewModel)
+                        destination: VehicleDetailView(vehicle: viewModel.vehicles[index], viewModel: viewModel)
                     ) {
                         VStack(alignment: .leading) {
                             Text(vehicle.name).font(.headline)

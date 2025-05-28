@@ -1,14 +1,7 @@
-//
-//  VehicleDetailView.swift
-//  CarTracker
-//
-//  Created by abbas on 27/05/2025.
-//
-
 import SwiftUI
 
 struct VehicleDetailView: View {
-    @Binding var vehicle: Vehicle
+    @ObservedObject var vehicle: Vehicle
     var viewModel: VehicleViewModel
 
     var body: some View {
@@ -33,7 +26,10 @@ struct VehicleDetailView: View {
                             Text("Date : \(record.date.formatted(date: .abbreviated, time: .omitted))")
                             Text("Km : \(record.mileage)")
                             Text("Coût : \(String(format: "%.2f €", record.cost))")
-                            Text("Remarques : \(record.notes)")
+                            if !record.notes.isEmpty {
+                                Text("Remarques : \(record.notes)")
+                                    .foregroundColor(.secondary)
+                            }
                         }
                         .padding(.vertical, 4)
                     }

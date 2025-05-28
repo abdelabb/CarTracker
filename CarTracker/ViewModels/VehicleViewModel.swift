@@ -1,5 +1,3 @@
-// CarTracker/ViewModels/VehicleViewModel.swift
-
 import Foundation
 
 class VehicleViewModel: ObservableObject {
@@ -15,20 +13,13 @@ class VehicleViewModel: ObservableObject {
         loadVehicles()
     }
 
-    // Sauvegarder dans UserDefaults
-    private func saveVehicles() {
+    func saveVehicles() {
         let encoder = JSONEncoder()
         if let encoded = try? encoder.encode(vehicles) {
             UserDefaults.standard.set(encoded, forKey: saveKey)
         }
     }
 
-    // Sauvegarder manuellement (accessible depuis une vue)
-    func save() {
-        saveVehicles()
-    }
-
-    // Charger depuis UserDefaults
     private func loadVehicles() {
         if let savedData = UserDefaults.standard.data(forKey: saveKey) {
             let decoder = JSONDecoder()
@@ -38,7 +29,6 @@ class VehicleViewModel: ObservableObject {
         }
     }
 
-    // Ajouter un véhicule
     func addVehicle(_ vehicle: Vehicle) {
         vehicles.append(vehicle)
     }

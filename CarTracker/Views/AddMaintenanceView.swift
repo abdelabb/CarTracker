@@ -1,10 +1,3 @@
-//
-//  AddMaintenanceView.swift
-//  CarTracker
-//
-//  Created by abbas on 27/05/2025.
-//
-
 import SwiftUI
 
 struct AddMaintenanceView: View {
@@ -43,27 +36,21 @@ struct AddMaintenanceView: View {
                     notes: notes
                 )
 
-                // ➕ Ajouter l'entretien
                 vehicle.maintenanceRecords.append(newEntry)
+                viewModel.saveVehicles()
 
-                // 💾 Sauvegarder les données
-                viewModel.save()
-
-                // 🔔 Planifier la notification
                 NotificationManager.shared.scheduleNotification(
                     for: vehicle.name,
                     type: type,
                     on: Calendar.current.date(byAdding: .day, value: 180, to: date) ?? date
                 )
 
-                // ✅ Afficher l'alerte de confirmation
                 showAlert = true
             }
         }
         .navigationTitle("Nouvel entretien")
         .alert("Entretien enregistré !", isPresented: $showAlert) {
             Button("OK") {
-                // 👋 Fermer la vue après confirmation
                 presentationMode.wrappedValue.dismiss()
             }
         } message: {
