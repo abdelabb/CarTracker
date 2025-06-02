@@ -1,8 +1,11 @@
 import UserNotifications
 import SwiftUI
+import StoreKit
 
 @main
 struct CarTrackerApp: App {
+    @StateObject var storeManager = StoreManager()
+    
     init() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { success, error in
             if success {
@@ -16,6 +19,7 @@ struct CarTrackerApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(storeManager)
         }
     }
 }

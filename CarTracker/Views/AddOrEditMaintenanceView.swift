@@ -1,49 +1,55 @@
 import SwiftUI
 
-struct AddMaintenanceView: View {
+struct AddOrEditMaintenanceView: View {
     @Environment(\.presentationMode) var presentationMode
+
     @ObservedObject var vehicle: Vehicle
     var viewModel: VehicleViewModel
     var existingEntry: MaintenanceEntry?
 
-    @State private var type: String = ""
-    @State private var date: Date = Date()
-    @State private var mileage: String = ""
-    @State private var cost: String = ""
-    @State private var notes: String = ""
-    @State private var registration: String = ""
-    @State private var registrationValid: Bool = true
-    @State private var showAlert: Bool = false
+    @State private var type: String
+    @State private var date: Date
+    @State private var mileage: String
+    @State private var cost: String
+    @State private var notes: String
+    @State private var showAlert = false
 
     var isEditing: Bool { existingEntry != nil }
+
+    init(vehicle: Vehicle, viewModel: VehicleViewModel, existingEntry: MaintenanceEntry?) {
+        self.vehicle = vehicle
+        self.viewModel = viewModel
+        self.existingEntry = existingEntry
+
+        _type = State(initialValue: existingEntry?.type ?? "")
+        _date = State(initialValue: existingEntry?.date ?? Date())
+        _mileage = State(initialValue: existingEntry.map { String($0.mileage) } ?? "")
+        _cost = State(initialValue: existingEntry.map { String(format: "%.2f", $0.cost) } ?? "")
+        _notes = State(initialValue: existingEntry?.notes ?? "")
+    }
 
     var body: some View {
         ZStack {
             LinearGradient(
-                gradient: Gradient(colors: [
-                    Color("PrimaryBackground"),
-                    Color("SecondaryBackground")
-                ]),
+                gradient: Gradient(colors: [Color("PrimaryBackground"), Color("SecondaryBackground")]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
-            VStack {
+            VStack(spacing: 20) {
                 Spacer(minLength: 30)
 
                 VStack(spacing: 22) {
                     Text(isEditing ? "Modifier l'entretien" : "Nouvel entretien")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
-                        .padding(.top, 10)
 
-                    // CHAMPS
                     Group {
                         HStack {
-                            Image(systemName: "wrench.and.screwdriver")
+                            Image(systemName: "wrench.fill")
                                 .foregroundColor(.accentColor)
-                            TextField("Ex: Vidange, Freins...", text: $type)
+                            TextField("Type (ex : Vidange)", text: $type)
                                 .textFieldStyle(.roundedBorder)
                         }
 
@@ -52,7 +58,6 @@ struct AddMaintenanceView: View {
                                 .foregroundColor(.accentColor)
                             DatePicker("Date", selection: $date, displayedComponents: .date)
                                 .labelsHidden()
-                                .padding(.vertical, 2)
                         }
 
                         HStack {
@@ -61,33 +66,6 @@ struct AddMaintenanceView: View {
                             TextField("Kilométrage", text: $mileage)
                                 .keyboardType(.numberPad)
                                 .textFieldStyle(.roundedBorder)
-                        }
-
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack {
-                                Image(systemName: "car.fill")
-                                    .foregroundColor(.accentColor)
-                                TextField("AA-123-AA", text: $registration)
-                                    .textInputAutocapitalization(.characters)
-                                    .autocorrectionDisabled(true)
-                                    .keyboardType(.asciiCapable)
-                                    .textFieldStyle(.roundedBorder)
-                                    .onChange(of: registration) { newValue in
-                                        let formatted = newValue.uppercased().replacingOccurrences(of: " ", with: "")
-                                        if formatted != newValue {
-                                            registration = formatted
-                                        }
-                                        let pattern = #"^[A-Z]{2}-\d{3}-[A-Z]{2}$"#
-                                        let predicate = NSPredicate(format: "SELF MATCHES %@", pattern)
-                                        registrationValid = predicate.evaluate(with: formatted)
-                                    }
-                                    .foregroundColor(registration.isEmpty || registrationValid ? .primary : .red)
-                            }
-                            if !registration.isEmpty && !registrationValid {
-                                Text("Format attendu : AA-123-AA")
-                                    .foregroundColor(.red)
-                                    .font(.caption)
-                            }
                         }
 
                         HStack {
@@ -113,7 +91,7 @@ struct AddMaintenanceView: View {
                     }
 
                     // BOUTON ENREGISTRER
-                    Button(action: saveEntry) {
+                    Button(action: save) {
                         HStack {
                             Image(systemName: isEditing ? "pencil.circle.fill" : "checkmark.circle.fill")
                             Text(isEditing ? "Modifier" : "Enregistrer")
@@ -122,20 +100,14 @@ struct AddMaintenanceView: View {
                         .padding(.vertical, 10)
                         .frame(maxWidth: .infinity)
                         .background(
-                            LinearGradient(
-                                colors: [.accentColor, .accentColor.opacity(0.7)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
+                            LinearGradient(colors: [.accentColor, .accentColor.opacity(0.7)], startPoint: .leading, endPoint: .trailing)
                         )
                         .foregroundColor(.white)
                         .cornerRadius(14)
                         .shadow(color: .accentColor.opacity(0.2), radius: 6, x: 0, y: 3)
                     }
-                    .disabled(!registrationValid || registration.isEmpty)
-                    .opacity(!registrationValid || registration.isEmpty ? 0.5 : 1.0)
 
-                    // BOUTON SUPPRIMER SI ÉDITION
+                    // BOUTON SUPPRIMER
                     if isEditing {
                         Button(role: .destructive, action: deleteEntry) {
                             Label("Supprimer cet entretien", systemImage: "trash")
@@ -145,21 +117,11 @@ struct AddMaintenanceView: View {
                 }
                 .padding(24)
                 .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-                .shadow(color: Color.black.opacity(0.1), radius: 18, x: 0, y: 7)
+                .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 5)
                 .padding(.horizontal, 16)
 
                 Spacer()
-            }
-        }
-        .onAppear {
-            if let entry = existingEntry {
-                type = entry.type
-                date = entry.date
-                mileage = String(entry.mileage)
-                cost = String(entry.cost)
-                notes = entry.notes
-                registration = vehicle.registration
             }
         }
         .alert(isEditing ? "Entretien modifié !" : "Entretien enregistré !", isPresented: $showAlert) {
@@ -169,39 +131,34 @@ struct AddMaintenanceView: View {
         } message: {
             Text(isEditing ?
                  "Les modifications ont bien été enregistrées." :
-                 "Un rappel vous sera envoyé dans 180 jours pour cet entretien.")
+                 "Un nouveau rappel sera ajouté pour cet entretien.")
         }
     }
 
-    private func saveEntry() {
-        guard registrationValid else { return }
+    func save() {
+        guard let mileageInt = Int(mileage),
+              let costDouble = Double(cost) else {
+            return
+        }
 
-        let newEntry = MaintenanceEntry(
-            type: type,
-            date: date,
-            mileage: Int(mileage) ?? 0,
-            cost: Double(cost) ?? 0.0,
-            notes: notes
-        )
-
-        if isEditing, let idx = vehicle.maintenanceRecords.firstIndex(where: { $0.id == existingEntry!.id }) {
-            vehicle.maintenanceRecords[idx] = newEntry
+        if let entry = existingEntry {
+            if let index = vehicle.maintenanceRecords.firstIndex(where: { $0.id == entry.id }) {
+                vehicle.maintenanceRecords[index].type = type
+                vehicle.maintenanceRecords[index].date = date
+                vehicle.maintenanceRecords[index].mileage = mileageInt
+                vehicle.maintenanceRecords[index].cost = costDouble
+                vehicle.maintenanceRecords[index].notes = notes
+            }
         } else {
+            let newEntry = MaintenanceEntry(type: type, date: date, mileage: mileageInt, cost: costDouble, notes: notes)
             vehicle.maintenanceRecords.append(newEntry)
-
-            // Crée un rappel 180 jours plus tard
-            NotificationManager.shared.scheduleNotification(
-                for: vehicle.name,
-                type: type,
-                on: Calendar.current.date(byAdding: .day, value: 180, to: date) ?? date
-            )
         }
 
         viewModel.saveVehicles()
         showAlert = true
     }
 
-    private func deleteEntry() {
+    func deleteEntry() {
         guard let entry = existingEntry else { return }
         if let index = vehicle.maintenanceRecords.firstIndex(where: { $0.id == entry.id }) {
             vehicle.maintenanceRecords.remove(at: index)

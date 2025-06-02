@@ -42,7 +42,7 @@ struct MaintenanceListView: View {
 }
 
 #Preview {
-    NavigationStack {
+    NavigationView {
         MaintenanceListView(maintenanceRecords: [
             MaintenanceEntry(type: "Vidange", date: .now, mileage: 120000, cost: 89.99, notes: "Avec changement de filtre."),
             MaintenanceEntry(type: "Freins", date: .now, mileage: 118000, cost: 120.00, notes: "Plaquettes avant remplacées.")
