@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-class Vehicle: ObservableObject, Identifiable, Codable {
+class Vehicle: ObservableObject, Identifiable, Codable, Hashable {
     var id: UUID
     var name: String
     var brand: String
@@ -23,7 +23,7 @@ class Vehicle: ObservableObject, Identifiable, Codable {
         self.maintenanceRecords = maintenanceRecords
     }
 
-    // Encoder manuellement les propriétés publiées
+    // MARK: - Codable
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
@@ -34,7 +34,6 @@ class Vehicle: ObservableObject, Identifiable, Codable {
         try container.encode(maintenanceRecords, forKey: .maintenanceRecords)
     }
 
-    // Decoder manuellement les propriétés publiées
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -43,5 +42,14 @@ class Vehicle: ObservableObject, Identifiable, Codable {
         registration = try container.decode(String.self, forKey: .registration)
         entries = try container.decode([Entry].self, forKey: .entries)
         maintenanceRecords = try container.decode([MaintenanceEntry].self, forKey: .maintenanceRecords)
+    }
+
+    // MARK: - Hashable
+    static func == (lhs: Vehicle, rhs: Vehicle) -> Bool {
+        return lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }

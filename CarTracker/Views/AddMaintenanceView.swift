@@ -7,155 +7,124 @@ struct AddMaintenanceView: View {
     var existingEntry: MaintenanceEntry?
 
     @State private var type: String = ""
-    @State private var date: Date = Date()
     @State private var mileage: String = ""
     @State private var cost: String = ""
     @State private var notes: String = ""
     @State private var registration: String = ""
     @State private var registrationValid: Bool = true
     @State private var showAlert: Bool = false
+    @State private var reminderDate: Date = Calendar.current.date(byAdding: .day, value: 180, to: Date()) ?? Date()
 
     var isEditing: Bool { existingEntry != nil }
 
     var body: some View {
         ZStack {
             LinearGradient(
-                gradient: Gradient(colors: [
-                    Color("PrimaryBackground"),
-                    Color("SecondaryBackground")
-                ]),
+                gradient: Gradient(colors: [Color("PrimaryBackground"), Color("SecondaryBackground")]),
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
             .ignoresSafeArea()
 
-            VStack {
-                Spacer(minLength: 30)
-
-                VStack(spacing: 22) {
+            ScrollView {
+                VStack(spacing: 20) {
                     Text(isEditing ? "Modifier l'entretien" : "Nouvel entretien")
                         .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundStyle(.primary)
-                        .padding(.top, 10)
+                        .padding(.top, 30)
 
-                    // CHAMPS
-                    Group {
-                        HStack {
-                            Image(systemName: "wrench.and.screwdriver")
-                                .foregroundColor(.accentColor)
-                            TextField("Ex: Vidange, Freins...", text: $type)
-                                .textFieldStyle(.roundedBorder)
-                        }
+                    VStack(spacing: 16) {
+                        field(icon: "wrench.and.screwdriver", content: {
+                            TextField("Ex : Vidange, Freins…", text: $type)
+                        })
 
-                        HStack {
-                            Image(systemName: "calendar")
-                                .foregroundColor(.accentColor)
-                            DatePicker("Date", selection: $date, displayedComponents: .date)
-                                .labelsHidden()
-                                .padding(.vertical, 2)
-                        }
+                        field(icon: "calendar.badge.plus", content: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                DatePicker("Date de rappel personnalisé", selection: $reminderDate, in: Date()..., displayedComponents: .date)
+                                    .labelsHidden()
+                                    .datePickerStyle(.compact)
 
-                        HStack {
-                            Image(systemName: "speedometer")
-                                .foregroundColor(.accentColor)
+                                Text("📬 Une notification vous sera envoyée à cette date.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        })
+
+                        field(icon: "speedometer", content: {
                             TextField("Kilométrage", text: $mileage)
                                 .keyboardType(.numberPad)
-                                .textFieldStyle(.roundedBorder)
-                        }
+                        })
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack {
-                                Image(systemName: "car.fill")
-                                    .foregroundColor(.accentColor)
+                        field(icon: "car.fill", content: {
+                            VStack(alignment: .leading, spacing: 4) {
                                 TextField("AA-123-AA", text: $registration)
                                     .textInputAutocapitalization(.characters)
                                     .autocorrectionDisabled(true)
                                     .keyboardType(.asciiCapable)
-                                    .textFieldStyle(.roundedBorder)
                                     .onChange(of: registration) { newValue in
                                         let formatted = newValue.uppercased().replacingOccurrences(of: " ", with: "")
                                         if formatted != newValue {
                                             registration = formatted
                                         }
                                         let pattern = #"^[A-Z]{2}-\d{3}-[A-Z]{2}$"#
-                                        let predicate = NSPredicate(format: "SELF MATCHES %@", pattern)
-                                        registrationValid = predicate.evaluate(with: formatted)
+                                        registrationValid = NSPredicate(format: "SELF MATCHES %@", pattern).evaluate(with: formatted)
                                     }
                                     .foregroundColor(registration.isEmpty || registrationValid ? .primary : .red)
-                            }
-                            if !registration.isEmpty && !registrationValid {
-                                Text("Format attendu : AA-123-AA")
-                                    .foregroundColor(.red)
-                                    .font(.caption)
-                            }
-                        }
 
-                        HStack {
-                            Image(systemName: "eurosign.circle")
-                                .foregroundColor(.accentColor)
+                                if !registration.isEmpty && !registrationValid {
+                                    Text("Format attendu : AA-123-AA")
+                                        .foregroundColor(.red)
+                                        .font(.caption)
+                                }
+                            }
+                        })
+
+                        field(icon: "eurosign.circle", content: {
                             TextField("Coût (€)", text: $cost)
                                 .keyboardType(.decimalPad)
-                                .textFieldStyle(.roundedBorder)
-                        }
+                        })
 
-                        HStack(alignment: .top) {
-                            Image(systemName: "note.text")
-                                .foregroundColor(.accentColor)
-                                .padding(.top, 6)
+                        field(icon: "note.text", content: {
                             if #available(iOS 16.0, *) {
                                 TextField("Remarques", text: $notes, axis: .vertical)
-                                    .textFieldStyle(.roundedBorder)
                             } else {
                                 TextField("Remarques", text: $notes)
-                                    .textFieldStyle(.roundedBorder)
                             }
-                        }
+                        })
                     }
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .shadow(radius: 6)
 
                     // BOUTON ENREGISTRER
                     Button(action: saveEntry) {
-                        HStack {
-                            Image(systemName: isEditing ? "pencil.circle.fill" : "checkmark.circle.fill")
-                            Text(isEditing ? "Modifier" : "Enregistrer")
-                                .fontWeight(.semibold)
-                        }
-                        .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity)
-                        .background(
-                            LinearGradient(
-                                colors: [.accentColor, .accentColor.opacity(0.7)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .foregroundColor(.white)
-                        .cornerRadius(14)
-                        .shadow(color: .accentColor.opacity(0.2), radius: 6, x: 0, y: 3)
+                        Label(isEditing ? "Modifier" : "Enregistrer", systemImage: isEditing ? "pencil.circle.fill" : "checkmark.circle.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(registrationValid && !registration.isEmpty ? Color.accentColor : Color.gray)
+                            .foregroundColor(.white)
+                            .cornerRadius(14)
                     }
                     .disabled(!registrationValid || registration.isEmpty)
-                    .opacity(!registrationValid || registration.isEmpty ? 0.5 : 1.0)
 
-                    // BOUTON SUPPRIMER SI ÉDITION
                     if isEditing {
                         Button(role: .destructive, action: deleteEntry) {
                             Label("Supprimer cet entretien", systemImage: "trash")
-                                .padding(.top, 10)
                         }
+                        .padding(.top, 10)
                     }
-                }
-                .padding(24)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-                .shadow(color: Color.black.opacity(0.1), radius: 18, x: 0, y: 7)
-                .padding(.horizontal, 16)
 
-                Spacer()
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 30)
             }
         }
         .onAppear {
             if let entry = existingEntry {
                 type = entry.type
-                date = entry.date
+                reminderDate = Calendar.current.date(byAdding: .day, value: 180, to: entry.date) ?? entry.date
                 mileage = String(entry.mileage)
                 cost = String(entry.cost)
                 notes = entry.notes
@@ -167,9 +136,18 @@ struct AddMaintenanceView: View {
                 presentationMode.wrappedValue.dismiss()
             }
         } message: {
-            Text(isEditing ?
-                 "Les modifications ont bien été enregistrées." :
-                 "Un rappel vous sera envoyé dans 180 jours pour cet entretien.")
+            Text("Un rappel vous sera envoyé le \(reminderDate.formatted(date: .abbreviated, time: .omitted)).")
+        }
+    }
+
+    @ViewBuilder
+    func field<Content: View>(icon: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .top) {
+            Image(systemName: icon)
+                .foregroundColor(.accentColor)
+                .padding(.top, 6)
+            content()
+                .textFieldStyle(.roundedBorder)
         }
     }
 
@@ -178,7 +156,7 @@ struct AddMaintenanceView: View {
 
         let newEntry = MaintenanceEntry(
             type: type,
-            date: date,
+            date: Date(), // Date automatique à aujourd’hui
             mileage: Int(mileage) ?? 0,
             cost: Double(cost) ?? 0.0,
             notes: notes
@@ -188,13 +166,7 @@ struct AddMaintenanceView: View {
             vehicle.maintenanceRecords[idx] = newEntry
         } else {
             vehicle.maintenanceRecords.append(newEntry)
-
-            // Crée un rappel 180 jours plus tard
-            NotificationManager.shared.scheduleNotification(
-                for: vehicle.name,
-                type: type,
-                on: Calendar.current.date(byAdding: .day, value: 180, to: date) ?? date
-            )
+            NotificationManager.shared.scheduleNotification(for: vehicle.name, type: type, on: reminderDate)
         }
 
         viewModel.saveVehicles()

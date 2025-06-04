@@ -2,14 +2,15 @@ import SwiftUI
 
 struct VehicleListView: View {
     @StateObject var viewModel = VehicleViewModel()
+    @AppStorage("isPremiumUser") var isPremiumUser: Bool = false
+    @State private var showLimitAlert = false
 
     var body: some View {
         NavigationView {
             ZStack {
-                // Fond dégradé doux pour un effet premium
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color("PrimaryBackground"), // Mets-les dans tes Assets ou utilise .blue/.gray
+                        Color("PrimaryBackground"),
                         Color("SecondaryBackground")
                     ]),
                     startPoint: .topLeading,
@@ -23,7 +24,6 @@ struct VehicleListView: View {
                             destination: VehicleDetailView(vehicle: viewModel.vehicles[index], viewModel: viewModel)
                         ) {
                             HStack(spacing: 16) {
-                                // Icône véhicule personnalisée
                                 ZStack {
                                     Circle()
                                         .fill(Color.accentColor.opacity(0.13))
@@ -61,16 +61,37 @@ struct VehicleListView: View {
             }
             .navigationTitle("Mes véhicules")
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    NavigationLink(destination: AddVehicleView(viewModel: viewModel)) {
-                        Label("Ajouter", systemImage: "plus")
-                            .font(.headline)
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        if isPremiumUser || viewModel.vehicles.count < 1 {
+                            // L'utilisateur peut ajouter un véhicule
+                            navigateToAddVehicle()
+                        } else {
+                            showLimitAlert = true
+                        }
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.accentColor)
                     }
                 }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
             }
+            .alert("Limite atteinte", isPresented: $showLimitAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Vous devez passer à la version Premium pour ajouter plus d'un véhicule.")
+            }
+        }
+    }
+
+    private func navigateToAddVehicle() {
+        // Utilise une NavigationLink cachée ou une redirection programmatique selon ton architecture
+        // Ici un exemple simple à adapter selon ta navigation :
+        if let window = UIApplication.shared.windows.first {
+            window.rootViewController?.present(
+                UIHostingController(rootView: AddVehicleView(viewModel: viewModel)),
+                animated: true
+            )
         }
     }
 

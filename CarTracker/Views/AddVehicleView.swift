@@ -1,12 +1,3 @@
-//
-//  AddVehicleView.swift
-//  CarTracker
-//
-//  Created by abbas on 27/05/2025.
-//
-
-// Views/AddVehicleView.swift
-
 import SwiftUI
 
 struct AddVehicleView: View {
@@ -16,19 +7,101 @@ struct AddVehicleView: View {
     @State private var name = ""
     @State private var brand = ""
     @State private var registration = ""
+    @State private var registrationValid = true
 
     var body: some View {
-        Form {
-            TextField("Nom du véhicule", text: $name)
-            TextField("Marque", text: $brand)
-            TextField("Immatriculation", text: $registration)
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [Color("PrimaryBackground"), Color("SecondaryBackground")]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
-            Button("Ajouter") {
-                let vehicle = Vehicle(name: name, brand: brand, registration: registration)
-                viewModel.addVehicle(vehicle)
-                presentationMode.wrappedValue.dismiss()
+            VStack(spacing: 24) {
+                Text("Nouveau véhicule")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .padding(.top, 30)
+
+                VStack(spacing: 16) {
+                    vehicleField(icon: "car.fill") {
+                        TextField("Nom du véhicule", text: $name)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    vehicleField(icon: "building.2.fill") {
+                        TextField("Marque", text: $brand)
+                            .textFieldStyle(.roundedBorder)
+                    }
+
+                    vehicleField(icon: "number.circle.fill") {
+                        VStack(alignment: .leading, spacing: 4) {
+                            TextField("Immatriculation (AA-123-AA)", text: $registration)
+                                .textFieldStyle(.roundedBorder)
+                                .textInputAutocapitalization(.characters)
+                                .autocorrectionDisabled(true)
+                                .keyboardType(.asciiCapable)
+                                .onChange(of: registration) { newValue in
+                                    let formatted = newValue.uppercased().replacingOccurrences(of: " ", with: "")
+                                    if formatted != newValue {
+                                        registration = formatted
+                                    }
+                                    let pattern = #"^[A-Z]{2}-\d{3}-[A-Z]{2}$"#
+                                    let predicate = NSPredicate(format: "SELF MATCHES %@", pattern)
+                                    registrationValid = predicate.evaluate(with: formatted)
+                                }
+                                .foregroundColor(registration.isEmpty || registrationValid ? .primary : .red)
+
+                            if !registration.isEmpty && !registrationValid {
+                                Text("Format invalide. Exemple : AB-123-CD")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .shadow(radius: 6)
+
+                // ✅ BOUTON
+                Button(action: addVehicle) {
+                    Label("Ajouter", systemImage: "plus.circle.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(validForm ? Color.accentColor : Color.gray)
+                        .foregroundColor(.white)
+                        .cornerRadius(14)
+                }
+                .disabled(!validForm)
+                .padding(.horizontal)
+
+                Spacer()
             }
+            .padding()
         }
-        .navigationTitle("Nouveau véhicule")
+    }
+
+    // 💡 Mise en page champ avec icône
+    @ViewBuilder
+    func vehicleField<Content: View>(icon: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .top) {
+            Image(systemName: icon)
+                .foregroundColor(.accentColor)
+                .padding(.top, 6)
+            content()
+        }
+    }
+
+    var validForm: Bool {
+        !name.isEmpty && !brand.isEmpty && registrationValid && !registration.isEmpty
+    }
+
+    func addVehicle() {
+        let newVehicle = Vehicle(name: name, brand: brand, registration: registration)
+        viewModel.addVehicle(newVehicle)
+        presentationMode.wrappedValue.dismiss()
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 struct VehicleDetailView: View {
     @ObservedObject var vehicle: Vehicle
@@ -6,11 +7,16 @@ struct VehicleDetailView: View {
 
     @State private var maintenanceToEdit: MaintenanceEntry? = nil
     @State private var showEditSheet = false
+    @State private var showLimitAlert = false
+    @State private var showReminderConfirmation = false
+
+    @AppStorage("isPremiumUser") var isPremiumUser: Bool = false
+    @Environment(\.presentationMode) var presentationMode
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Card d'en-tête véhicule
+                // Carte véhicule
                 HStack(alignment: .center, spacing: 16) {
                     ZStack {
                         Circle()
@@ -34,7 +40,7 @@ struct VehicleDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                 .shadow(color: Color.black.opacity(0.06), radius: 7, x: 0, y: 3)
 
-                // Historique des entretiens
+                // Historique entretiens
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
                         Image(systemName: "wrench.and.screwdriver")
@@ -43,6 +49,7 @@ struct VehicleDetailView: View {
                             .font(.title2)
                             .fontWeight(.semibold)
                     }
+
                     if !vehicle.maintenanceRecords.isEmpty {
                         VStack(spacing: 14) {
                             ForEach(vehicle.maintenanceRecords) { record in
@@ -55,7 +62,7 @@ struct VehicleDetailView: View {
                                         Text(record.date.formatted(date: .abbreviated, time: .omitted))
                                             .font(.footnote)
                                             .foregroundColor(.secondary)
-                                        // Bouton édition
+
                                         Button(action: {
                                             maintenanceToEdit = record
                                             showEditSheet = true
@@ -83,6 +90,17 @@ struct VehicleDetailView: View {
                                                 .foregroundColor(.gray)
                                             Text("Remarques : \(record.notes)")
                                                 .font(.subheadline)
+                                        }
+                                    }
+
+                                    if isPremiumUser {
+                                        Button(action: {
+                                            scheduleReminder(for: record)
+                                        }) {
+                                            Label("📅 Programmer un rappel intelligent", systemImage: "bell.badge.fill")
+                                                .font(.subheadline)
+                                                .foregroundColor(.blue)
+                                                .padding(.top, 6)
                                         }
                                     }
                                 }
@@ -124,16 +142,19 @@ struct VehicleDetailView: View {
         .navigationTitle("Détail véhicule")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                EditButton()
-            }
-            ToolbarItem(placement: .navigationBarLeading) {
-                NavigationLink(destination: AddMaintenanceView(vehicle: vehicle, viewModel: viewModel)) {
-                    Label("Ajouter Entretien", systemImage: "plus")
-                        .font(.headline)
+                Button {
+                    if isPremiumUser || vehicle.maintenanceRecords.count < 1 {
+                        navigateToAddMaintenance()
+                    } else {
+                        showLimitAlert = true
+                    }
+                } label: {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.accentColor)
                 }
             }
         }
-        // Feuille pour modification d’entretien
         .sheet(item: $maintenanceToEdit) { entry in
             AddOrEditMaintenanceView(
                 vehicle: vehicle,
@@ -141,10 +162,59 @@ struct VehicleDetailView: View {
                 existingEntry: entry
             )
         }
+        .alert("Limite atteinte", isPresented: $showLimitAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Vous devez passer à la version Premium pour ajouter plus d’un entretien.")
+        }
+        .alert("Rappel programmé ✅", isPresented: $showReminderConfirmation) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Un rappel d’entretien sera envoyé dans 6 mois.")
+        }
+    }
+
+    func navigateToAddMaintenance() {
+        if let window = UIApplication.shared.windows.first {
+            window.rootViewController?.present(
+                UIHostingController(rootView: AddMaintenanceView(vehicle: vehicle, viewModel: viewModel)),
+                animated: true
+            )
+        }
     }
 
     func deleteMaintenance(at offsets: IndexSet) {
         vehicle.maintenanceRecords.remove(atOffsets: offsets)
         viewModel.saveVehicles()
+    }
+
+    // MARK: - Programmation de rappel intelligent
+    func scheduleReminder(for record: MaintenanceEntry) {
+        let content = UNMutableNotificationContent()
+        content.title = "📅 Entretien recommandé"
+        content.body = "Un nouvel entretien est conseillé pour \(vehicle.name)."
+        content.sound = .default
+
+        let triggerDate = Calendar.current.date(byAdding: .month, value: 6, to: record.date) ?? Date()
+        let trigger = UNCalendarNotificationTrigger(
+            dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour], from: triggerDate),
+            repeats: false
+        )
+
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: trigger
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if error == nil {
+                DispatchQueue.main.async {
+                    showReminderConfirmation = true
+                }
+            } else {
+                print("❌ Erreur notification : \(error?.localizedDescription ?? "inconnue")")
+            }
+        }
     }
 }
