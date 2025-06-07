@@ -8,10 +8,12 @@ struct VehicleDetailView: View {
     @State private var maintenanceToEdit: MaintenanceEntry? = nil
     @State private var showEditSheet = false
     @State private var showLimitAlert = false
-    @State private var showReminderConfirmation = false
+    @State private var showPurchaseSuccessAlert = false
 
     @AppStorage("isPremiumUser") var isPremiumUser: Bool = false
+    //@AppStorage("freeMaintenanceCount") private var freeMaintenanceCount: Int = 0
     @Environment(\.presentationMode) var presentationMode
+    @EnvironmentObject var storeManager: StoreManager
 
     var body: some View {
         ScrollView {
@@ -92,17 +94,6 @@ struct VehicleDetailView: View {
                                                 .font(.subheadline)
                                         }
                                     }
-
-                                    if isPremiumUser {
-                                        Button(action: {
-                                            scheduleReminder(for: record)
-                                        }) {
-                                            Label("📅 Programmer un rappel intelligent", systemImage: "bell.badge.fill")
-                                                .font(.subheadline)
-                                                .foregroundColor(.blue)
-                                                .padding(.top, 6)
-                                        }
-                                    }
                                 }
                                 .padding()
                                 .background(Color(.systemBackground).opacity(0.80))
@@ -143,10 +134,16 @@ struct VehicleDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    if isPremiumUser || vehicle.maintenanceRecords.count < 1 {
+                    if isPremiumUser {
                         navigateToAddMaintenance()
                     } else {
-                        showLimitAlert = true
+                        // Vérifie le nombre exact d'entretiens gratuits enregistrés
+                        let freeCount = vehicle.maintenanceRecords.filter { !$0.isPremium }.count
+                        if freeCount < 3 {
+                            navigateToAddMaintenance()
+                        } else {
+                            showLimitAlert = true
+                        }
                     }
                 } label: {
                     Image(systemName: "plus.circle")
@@ -163,16 +160,21 @@ struct VehicleDetailView: View {
             )
         }
         .alert("Limite atteinte", isPresented: $showLimitAlert) {
-            Button("OK", role: .cancel) { }
+            Button("Passer à Premium") {
+                startPremiumPurchase()
+            }
+            Button("Annuler", role: .cancel) { }
         } message: {
-            Text("Vous devez passer à la version Premium pour ajouter plus d’un entretien.")
+            Text("🔒 Vous avez atteint la limite de 3 entretiens gratuits. Passez à la version Premium pour continuer.")
         }
-        .alert("Rappel programmé ✅", isPresented: $showReminderConfirmation) {
+        .alert("🎉 Premium activé !", isPresented: $showPurchaseSuccessAlert) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text("Un rappel d’entretien sera envoyé dans 6 mois.")
+            Text("Merci pour votre achat ! Les fonctionnalités Premium sont maintenant débloquées.")
         }
     }
+
+    // MARK: - Fonctions
 
     func navigateToAddMaintenance() {
         if let window = UIApplication.shared.windows.first {
@@ -188,32 +190,22 @@ struct VehicleDetailView: View {
         viewModel.saveVehicles()
     }
 
-    // MARK: - Programmation de rappel intelligent
-    func scheduleReminder(for record: MaintenanceEntry) {
-        let content = UNMutableNotificationContent()
-        content.title = "📅 Entretien recommandé"
-        content.body = "Un nouvel entretien est conseillé pour \(vehicle.name)."
-        content.sound = .default
+    private func startPremiumPurchase() {
+        Task {
+            if let product = storeManager.premiumProduct {
+                await storeManager.purchase(product)
 
-        let triggerDate = Calendar.current.date(byAdding: .month, value: 6, to: record.date) ?? Date()
-        let trigger = UNCalendarNotificationTrigger(
-            dateMatching: Calendar.current.dateComponents([.year, .month, .day, .hour], from: triggerDate),
-            repeats: false
-        )
+                // Mise à jour immédiate
+                await storeManager.updatePurchasedProducts()
+                isPremiumUser = storeManager.isPremiumUser
 
-        let request = UNNotificationRequest(
-            identifier: UUID().uuidString,
-            content: content,
-            trigger: trigger
-        )
-
-        UNUserNotificationCenter.current().add(request) { error in
-            if error == nil {
-                DispatchQueue.main.async {
-                    showReminderConfirmation = true
+                if isPremiumUser {
+                    showPurchaseSuccessAlert = true
+                } else {
+                    print("⚠️ Achat effectué mais non reconnu.")
                 }
             } else {
-                print("❌ Erreur notification : \(error?.localizedDescription ?? "inconnue")")
+                print("❌ Aucun produit premium trouvé.")
             }
         }
     }

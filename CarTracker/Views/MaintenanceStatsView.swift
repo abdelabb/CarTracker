@@ -46,10 +46,10 @@ struct MaintenanceStatsView: View {
         Group {
             if #available(iOS 16.0, *) {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                        Text("Entretiens par mois")
-                            .font(.title2).bold()
-                            .padding(.horizontal)
+                    VStack(alignment: .leading, spacing: 24) {
+//                        Text("📊 Statistiques d’entretien")
+//                            .font(.title.bold())
+//                            .padding(.horizontal)
 
                         Picker("Véhicule", selection: $selectedVehicle) {
                             Text("Tous les véhicules").tag(nil as Vehicle?)
@@ -57,7 +57,7 @@ struct MaintenanceStatsView: View {
                                 Text(vehicle.name).tag(vehicle as Vehicle?)
                             }
                         }
-                        .pickerStyle(.menu)
+                        .pickerStyle(.segmented)
                         .padding(.horizontal)
 
                         Text("Total : \(filteredRecords.count) entretiens")
@@ -66,45 +66,57 @@ struct MaintenanceStatsView: View {
                             .padding(.horizontal)
 
                         if monthlyData.isEmpty {
-                            VStack(spacing: 10) {
-                                Text("Aucun entretien à afficher")
-                                    .foregroundColor(.secondary)
+                            VStack(spacing: 12) {
                                 Image(systemName: "wrench.and.screwdriver")
                                     .font(.system(size: 40))
                                     .foregroundColor(.gray.opacity(0.3))
+                                Text("Aucun entretien à afficher")
+                                    .foregroundColor(.gray)
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.top, 50)
                         } else {
-                            Chart(monthlyData) { item in
-                                BarMark(
-                                    x: .value("Mois", item.month),
-                                    y: .value("Nombre", item.count)
-                                )
-                                .foregroundStyle(.blue)
-                            }
-                            .frame(height: 200)
-                            .padding(.horizontal)
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text("🔧 Entretiens par mois")
+                                    .font(.title3.bold())
+                                    .padding(.horizontal)
 
-                            Divider().padding(.horizontal)
-
-                            Text("Coûts totaux par mois")
-                                .font(.title3).fontWeight(.semibold)
+                                Chart {
+                                    ForEach(monthlyData) { item in
+                                        BarMark(
+                                            x: .value("Mois", item.month),
+                                            y: .value("Entretiens", item.count)
+                                        )
+                                        .foregroundStyle(.blue.gradient)
+                                        .cornerRadius(6)
+                                    }
+                                }
+                                .chartXAxis {
+                                    AxisMarks(values: .automatic)
+                                }
+                                .frame(height: 240)
                                 .padding(.horizontal)
 
-                            Chart(monthlyCosts) { item in
-                                LineMark(
-                                    x: .value("Mois", item.month),
-                                    y: .value("€", item.totalCost)
-                                )
-                                .foregroundStyle(.green)
-                                .symbol(Circle())
+                                Text("💰 Coûts totaux par mois")
+                                    .font(.title3.bold())
+                                    .padding(.horizontal)
+
+                                Chart {
+                                    ForEach(monthlyCosts) { item in
+                                        LineMark(
+                                            x: .value("Mois", item.month),
+                                            y: .value("€", item.totalCost)
+                                        )
+                                        .interpolationMethod(.catmullRom)
+                                        .symbol(Circle())
+                                        .foregroundStyle(.green.gradient)
+                                    }
+                                }
+                                .frame(height: 240)
+                                .padding(.horizontal)
                             }
-                            .frame(height: 200)
-                            .padding(.horizontal)
                         }
 
-                        // 🔒 Bouton partager PDF (auto-génération)
                         if isPremiumUser, let pdfURL {
                             ShareLink(item: pdfURL) {
                                 Label("Partager le PDF", systemImage: "square.and.arrow.up")
@@ -124,11 +136,11 @@ struct MaintenanceStatsView: View {
                         }
                     }
                 }
-                .navigationTitle("Statistiques")
+                .navigationTitle("📊 Entretiens")
             } else {
-                VStack {
+                VStack(spacing: 12) {
                     Text("Statistiques non disponibles")
-                        .font(.title2).bold()
+                        .font(.title2.bold())
                     Text("Requiert iOS 16 ou plus.")
                         .foregroundColor(.secondary)
                 }
@@ -137,7 +149,7 @@ struct MaintenanceStatsView: View {
         }
     }
 
-    func exportPDF() {
+    private func exportPDF() {
         let pdfMetaData = [
             kCGPDFContextCreator: "CarTracker",
             kCGPDFContextAuthor: "youAllergie",
@@ -146,11 +158,7 @@ struct MaintenanceStatsView: View {
 
         let format = UIGraphicsPDFRendererFormat()
         format.documentInfo = pdfMetaData as [String: Any]
-
-        let pageWidth = 612.0
-        let pageHeight = 792.0
-        let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
-
+        let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792)
         let renderer = UIGraphicsPDFRenderer(bounds: pageRect, format: format)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("Statistiques_Entretien_Complet.pdf")
 
@@ -159,21 +167,15 @@ struct MaintenanceStatsView: View {
                 context.beginPage()
                 var yOffset: CGFloat = 50
 
-                // Titre principal
-                let title = "Statistiques d’entretien"
-                title.draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 22)])
+                "Statistiques d’entretien".draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 22)])
                 yOffset += 40
 
-                // Nom du véhicule
                 if let vehicle = selectedVehicle {
-                    let vehicleTitle = "Véhicule : \(vehicle.name)"
-                    vehicleTitle.draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.italicSystemFont(ofSize: 16)])
+                    "Véhicule : \(vehicle.name)".draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.italicSystemFont(ofSize: 16)])
                     yOffset += 30
                 }
 
-                // Résumé mensuel
-                let monthlyTitle = "Résumé mensuel"
-                monthlyTitle.draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 18)])
+                "Résumé mensuel".draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 18)])
                 yOffset += 30
 
                 for (index, entry) in monthlyData.enumerated() {
@@ -184,10 +186,7 @@ struct MaintenanceStatsView: View {
                 }
 
                 yOffset += 30
-
-                // Détail
-                let detailTitle = "Détail des entretiens"
-                detailTitle.draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 18)])
+                "Détail des entretiens".draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.boldSystemFont(ofSize: 18)])
                 yOffset += 30
 
                 let formatter = DateFormatter()
@@ -195,10 +194,10 @@ struct MaintenanceStatsView: View {
 
                 for record in filteredRecords.sorted(by: { $0.date < $1.date }) {
                     let date = formatter.string(from: record.date)
-                    let detailLine = "• \(date) — \(record.type) — \(record.mileage) km — \(String(format: "%.2f €", record.cost))"
-                    detailLine.draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.systemFont(ofSize: 13)])
+                    let line = "• \(date) — \(record.type) — \(record.mileage) km — \(String(format: "%.2f €", record.cost))"
+                    line.draw(at: CGPoint(x: 72, y: yOffset), withAttributes: [.font: UIFont.systemFont(ofSize: 13)])
                     yOffset += 20
-                    if yOffset > pageHeight - 60 {
+                    if yOffset > pageRect.height - 60 {
                         context.beginPage()
                         yOffset = 50
                     }
@@ -212,7 +211,7 @@ struct MaintenanceStatsView: View {
     }
 }
 
-// Extension sécurisée
+// Extension sécurisée pour éviter les crashs
 extension Collection {
     subscript(safe index: Index) -> Element? {
         indices.contains(index) ? self[index] : nil

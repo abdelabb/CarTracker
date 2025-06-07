@@ -13,6 +13,8 @@ struct AddOrEditMaintenanceView: View {
     @State private var cost: String
     @State private var notes: String
     @State private var showAlert = false
+    //@AppStorage("freeMaintenanceCount") private var freeMaintenanceCount: Int = 0
+    @AppStorage("isPremiumUser") private var isPremiumUser: Bool = false
 
     var isEditing: Bool { existingEntry != nil }
 
@@ -142,6 +144,7 @@ struct AddOrEditMaintenanceView: View {
         }
 
         if let entry = existingEntry {
+            // Modification
             if let index = vehicle.maintenanceRecords.firstIndex(where: { $0.id == entry.id }) {
                 vehicle.maintenanceRecords[index].type = type
                 vehicle.maintenanceRecords[index].date = date
@@ -150,8 +153,22 @@ struct AddOrEditMaintenanceView: View {
                 vehicle.maintenanceRecords[index].notes = notes
             }
         } else {
+            // ✅ Vérifier la limite avant ajout
+            print("🔢 Nombre actuel d'entretiens gratuits pour ce véhicule : \(vehicle.freeMaintenanceCount)")
+            if !isPremiumUser && vehicle.freeMaintenanceCount >= 3 {
+                print("🚫 \(vehicle.name) atteint la limite gratuite (\(vehicle.freeMaintenanceCount)/3)")
+                return
+            }
+
+            // Création
             let newEntry = MaintenanceEntry(type: type, date: date, mileage: mileageInt, cost: costDouble, notes: notes)
             vehicle.maintenanceRecords.append(newEntry)
+
+            // Incrémenter le compteur uniquement si gratuit
+            if !isPremiumUser {
+                viewModel.incrementFreeMaintenance(for: vehicle)
+                print("📌 \(vehicle.name) - Entretien gratuit \(vehicle.freeMaintenanceCount + 1)/3 utilisé")
+            }
         }
 
         viewModel.saveVehicles()

@@ -10,8 +10,6 @@ struct AddMaintenanceView: View {
     @State private var mileage: String = ""
     @State private var cost: String = ""
     @State private var notes: String = ""
-    @State private var registration: String = ""
-    @State private var registrationValid: Bool = true
     @State private var showAlert: Bool = false
     @State private var reminderDate: Date = Calendar.current.date(byAdding: .day, value: 180, to: Date()) ?? Date()
 
@@ -54,30 +52,6 @@ struct AddMaintenanceView: View {
                                 .keyboardType(.numberPad)
                         })
 
-                        field(icon: "car.fill", content: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                TextField("AA-123-AA", text: $registration)
-                                    .textInputAutocapitalization(.characters)
-                                    .autocorrectionDisabled(true)
-                                    .keyboardType(.asciiCapable)
-                                    .onChange(of: registration) { newValue in
-                                        let formatted = newValue.uppercased().replacingOccurrences(of: " ", with: "")
-                                        if formatted != newValue {
-                                            registration = formatted
-                                        }
-                                        let pattern = #"^[A-Z]{2}-\d{3}-[A-Z]{2}$"#
-                                        registrationValid = NSPredicate(format: "SELF MATCHES %@", pattern).evaluate(with: formatted)
-                                    }
-                                    .foregroundColor(registration.isEmpty || registrationValid ? .primary : .red)
-
-                                if !registration.isEmpty && !registrationValid {
-                                    Text("Format attendu : AA-123-AA")
-                                        .foregroundColor(.red)
-                                        .font(.caption)
-                                }
-                            }
-                        })
-
                         field(icon: "eurosign.circle", content: {
                             TextField("Coût (€)", text: $cost)
                                 .keyboardType(.decimalPad)
@@ -102,11 +76,10 @@ struct AddMaintenanceView: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(registrationValid && !registration.isEmpty ? Color.accentColor : Color.gray)
+                            .background(Color.accentColor)
                             .foregroundColor(.white)
                             .cornerRadius(14)
                     }
-                    .disabled(!registrationValid || registration.isEmpty)
 
                     if isEditing {
                         Button(role: .destructive, action: deleteEntry) {
@@ -128,7 +101,6 @@ struct AddMaintenanceView: View {
                 mileage = String(entry.mileage)
                 cost = String(entry.cost)
                 notes = entry.notes
-                registration = vehicle.registration
             }
         }
         .alert(isEditing ? "Entretien modifié !" : "Entretien enregistré !", isPresented: $showAlert) {
@@ -152,11 +124,9 @@ struct AddMaintenanceView: View {
     }
 
     private func saveEntry() {
-        guard registrationValid else { return }
-
         let newEntry = MaintenanceEntry(
             type: type,
-            date: Date(), // Date automatique à aujourd’hui
+            date: Date(),
             mileage: Int(mileage) ?? 0,
             cost: Double(cost) ?? 0.0,
             notes: notes
